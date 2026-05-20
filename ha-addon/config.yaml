@@ -1,7 +1,7 @@
 name: "FastAPI"
 version: "1.0.0"
 slug: "uae_pdf_to_ofx"
-description: "Converts UAE bank statement PDFs to OFX format via HTTP API"
+description: "set of local apis for n8n automations"
 arch:
   - aarch64
   - amd64
@@ -13,9 +13,5 @@ ports_description:
   8099/tcp: "FastAPI HTTP service"
 map:
   - data
-options:
-  port: 8099
-schema:
-  port: int
-environment:
-  PORT: "{{port}}"
+options: {}
+schema: {}

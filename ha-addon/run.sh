@@ -1,13 +1,11 @@
 #!/bin/bash
 set -e
 
-PORT=${PORT:-8099}
-
-echo "Starting FastAPI on port ${PORT}..."
+echo "Starting FastAPI on port 8099..."
 mkdir -p /data/ofx
 
 exec uvicorn api.main:app \
     --host 0.0.0.0 \
-    --port "${PORT}" \
+    --port 8099 \
     --workers 1 \
     --log-level info
