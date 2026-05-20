@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     python-multipart
 
 COPY parsers/ parsers/
+COPY trn_assistant/ trn_assistant/
 COPY pdf_to_ofx.py pdf_unlock.py ./
 COPY api/ api/
 

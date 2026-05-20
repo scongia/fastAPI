@@ -1,17 +1,20 @@
 """
 FastAPI service wrapping pdf_unlock.py and pdf_to_ofx.py as HTTP endpoints.
 
-POST /unlock  — accepts PDF + password, returns unlocked PDF bytes
-POST /convert — accepts PDF + optional parser key, writes OFX to /data/ofx,
-                returns OFX bytes
-GET  /health  — liveness check
+POST /unlock          — accepts PDF + password, returns unlocked PDF bytes
+POST /convert         — accepts PDF + optional parser key, writes OFX to /data/ofx,
+                        returns OFX bytes
+GET  /health          — liveness check
+POST /trn/process-invoice  — fetch invoice from Dext, extract TRN, update Zoho Books
+POST /trn/extract-trn      — extract TRN from invoice only
+GET  /trn/vendor/{name}    — check vendor TRN status in Zoho Books
 """
 
 import logging
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 
 import sys
@@ -23,11 +26,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from parsers import PARSERS, detect_bank  # noqa: E402
 from pdf_to_ofx import convert  # noqa: E402
 from pdf_unlock import unlock  # noqa: E402
+from api.routers import trn_assistant as trn_router  # noqa: E402
 
 log = logging.getLogger("api")
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="PDF→OFX API")
+app = FastAPI(title="UAE Automation APIs")
+app.include_router(trn_router.router)
 
 OFX_OUTPUT_ROOT = Path(os.environ.get("OFX_OUTPUT_ROOT", "/data/ofx"))
 
@@ -81,7 +86,6 @@ async def convert_pdf(
         in_path = tmp_path / (file.filename or "input.pdf")
         in_path.write_bytes(pdf_bytes)
 
-        # Auto-detect bank if no parser supplied
         parser_key = parser
         if not parser_key:
             parser_key = detect_bank(in_path) or ""
@@ -90,9 +94,8 @@ async def convert_pdf(
                     status_code=422,
                     detail="Could not detect bank. Supply a 'parser' field.",
                 )
-            log.info("Auto-detected bank: %s", parser_key)
+            <log.info>("Auto-detected bank: %s", parser_key)
 
-        # Write OFX to shared volume under /data/ofx/<parser>/
         ofx_dir = OFX_OUTPUT_ROOT / parser_key
         ofx_dir.mkdir(parents=True, exist_ok=True)
 
@@ -104,7 +107,6 @@ async def convert_pdf(
             log.exception("convert error")
             raise HTTPException(status_code=500, detail=str(exc))
 
-        # Return the OFX file that was just written
         ofx_files = sorted(ofx_dir.glob("*.ofx"), key=lambda p: p.stat().st_mtime, reverse=True)
         if not ofx_files:
             raise HTTPException(status_code=500, detail="OFX file not found after conversion")
