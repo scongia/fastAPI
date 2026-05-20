@@ -1,0 +1,642 @@
+{
+  "name": "Bank Statement → OFX",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "filters": {
+          "readStatus": "unread"
+        }
+      },
+      "id": "d62f73ec-f081-4eba-960e-d5041ccd4650",
+      "name": "Gmail: Poll for Statements",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        176
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "G74N1u6InnJGuhZS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "={{ $now.toFormat('yyLL') }}-{{ $binary.data.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('API: Unlock PDF').item.json.folderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "9cde915d-839e-4a02-be63-c5dc2723f0a9",
+      "name": "Google Drive: Save PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        688,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://homeassistant.local:8099/unlock",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "attachment_0"
+            },
+            {
+              "name": "password",
+              "value": "={{ $json.pdf_password }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "aea54b68-30a9-4641-8071-76aeed503308",
+      "name": "API: Unlock PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        336,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://homeassistant.local:8099/convert",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "parser",
+              "value": "={{ $('API: Unlock PDF').item.json.parser }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "62575047-05e0-40ae-a2f1-c109ebfa34b2",
+      "name": "API: Convert PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        640,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $now.toFormat('yyLL') }}-{{ $binary.data.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('API: Unlock PDF').item.json.folderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "fc9d33c1-a095-48b8-b08b-2248c5b0d4d0",
+      "name": "Google Drive: Save OFX",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        880,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.subject }}",
+                    "rightValue": "/CURRENT\\sACCOUNT?/i",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    },
+                    "id": "d0f0c602-f19c-48d0-a205-b44e95f99c9e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "CURRENT ACCOUNT"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "177275c8-ac39-439e-8263-3fa9a1fe5adf",
+                    "leftValue": "={{ $json.subject}}",
+                    "rightValue": "/VISA\\sSKYWARDS-INFINITE?/i",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "SKYWARDS INFINATE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9a1afa69-a61e-477f-8fb0-861934615c2b",
+                    "leftValue": "={{ $json.subject}}",
+                    "rightValue": "/Accounts\\sStatement?/i",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HSBC"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -336,
+        160
+      ],
+      "id": "f98c2fe8-a561-456f-a363-0c956fedf9aa",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e5edc949-06a0-4854-9ef7-5e62ab8a77af",
+              "name": "pdf_password",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "f74c5280-4ff2-4a25-82f5-f50b4127303d",
+              "name": "parser",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "1bc84a2d-0454-4c9a-9e6a-2aa2771ce0f2",
+              "name": "folderId",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1024,
+        176
+      ],
+      "id": "8d5b3872-9b37-4097-b37e-855b7db5c624",
+      "name": "values"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f751fd84-ad7e-4598-af39-d4a20ccb7db8",
+              "name": "parser",
+              "value": "enbd-credit",
+              "type": "string"
+            },
+            {
+              "id": "c2fd121e-88e9-4bdf-a0c4-19428333c1bf",
+              "name": "pdf_password",
+              "value": "SERG0210",
+              "type": "string"
+            },
+            {
+              "id": "e6abbad8-df32-4b9e-b6af-24c1a15d0cc9",
+              "name": "folderId",
+              "value": "1CHGZu7on_fp8Xt-UoNz7blH2gLqin2f-",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        176
+      ],
+      "id": "56023334-122d-4385-a769-2c2614837597",
+      "name": "enbd-credit"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f751fd84-ad7e-4598-af39-d4a20ccb7db8",
+              "name": "parser",
+              "value": "enbd-current",
+              "type": "string"
+            },
+            {
+              "id": "c2fd121e-88e9-4bdf-a0c4-19428333c1bf",
+              "name": "pdf_password",
+              "value": "SERG0210",
+              "type": "string"
+            },
+            {
+              "id": "e6abbad8-df32-4b9e-b6af-24c1a15d0cc9",
+              "name": "folderId",
+              "value": "1WScWATmq3mUeW3ThsZuT1qLqkW-9vIO6",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1e0e82a6-a1ff-41cf-a45a-33286890539d",
+      "name": "enbd-current"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f751fd84-ad7e-4598-af39-d4a20ccb7db8",
+              "name": "parser",
+              "value": "hsbc",
+              "type": "string"
+            },
+            {
+              "id": "c2fd121e-88e9-4bdf-a0c4-19428333c1bf",
+              "name": "pdf_password",
+              "value": "021080205184",
+              "type": "string"
+            },
+            {
+              "id": "e6abbad8-df32-4b9e-b6af-24c1a15d0cc9",
+              "name": "folderId",
+              "value": "1ntSwVndEuljiArIHanjBYyrpADkTuyl3",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        384
+      ],
+      "id": "0cf610e2-9b27-492e-8787-06daa8546b6e",
+      "name": "hsbc"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cd0e30ea-a6a0-42da-af50-1f9d458157b6",
+              "leftValue": "={{ $('Gmail: Poll for Statements').item.json.From.toLowerCase()}}",
+              "rightValue": "sergio.congia@sap.com",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "45dc341e-ab32-4edb-89d0-8b50f34542df",
+              "leftValue": "={{ $('Gmail: Poll for Statements').item.json.From.toLowerCase()}}",
+              "rightValue": "statements@email.hsbc.ae",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -800,
+        176
+      ],
+      "id": "2b92eeee-1a8c-4b6d-a499-423cc6d95cc0",
+      "name": "Filter Sender"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $('Gmail: Poll for Statements').item.json.id }}",
+        "simple": false,
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        176
+      ],
+      "id": "bee01a3d-e6a9-4ebd-b4c9-0b3e34ac5821",
+      "name": "Get Message",
+      "webhookId": "f1d0527a-f065-44ec-b015-4bc26fad3b8d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "G74N1u6InnJGuhZS",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "sergio.congia@gmail.com",
+        "subject": "={{ $now.format('yyLL')}} {{ $('API: Unlock PDF').item.json.parser }} Statements Ready for Import to Banktivity",
+        "message": "=Files are located at https://drive.google.com/drive/folders/{{ $('API: Unlock PDF').item.json.folderId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1168,
+        240
+      ],
+      "id": "bf863514-e90c-4938-b547-7a322a09e13d",
+      "name": "Send a message",
+      "webhookId": "d12d37aa-c7ac-4700-80a2-bdc5a3098a0f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "G74N1u6InnJGuhZS",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail: Poll for Statements": {
+      "main": [
+        [
+          {
+            "node": "values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API: Unlock PDF": {
+      "main": [
+        [
+          {
+            "node": "Google Drive: Save PDF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "API: Convert PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API: Convert PDF": {
+      "main": [
+        [
+          {
+            "node": "Google Drive: Save OFX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Save PDF": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "enbd-current",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "enbd-credit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "hsbc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "values": {
+      "main": [
+        [
+          {
+            "node": "Filter Sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enbd-credit": {
+      "main": [
+        [
+          {
+            "node": "API: Unlock PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enbd-current": {
+      "main": [
+        [
+          {
+            "node": "API: Unlock PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "hsbc": {
+      "main": [
+        [
+          {
+            "node": "API: Unlock PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Sender": {
+      "main": [
+        [
+          {
+            "node": "Get Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Message": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive: Save OFX": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "46d51404-51fc-4ee7-a79d-aee8a2c5a0c8",
+  "meta": {
+    "instanceId": "dac41caf3bbf3b6e336749d0871a82b049f0027d525c0568fe2be0a99a34a8e9"
+  },
+  "id": "HbqqL8IVaAVifs12",
+  "tags": []
+}

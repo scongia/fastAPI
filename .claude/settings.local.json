@@ -54,7 +54,10 @@
       "Bash(docker compose *)",
       "Bash(pip show *)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(wc -l /Users/I549061/Developments/projects/fastAPI/parsers/*.py)",
+      "WebFetch(domain:developers.home-assistant.io)",
+      "WebFetch(domain:pkgs.alpinelinux.org)"
     ]
   }
 }
