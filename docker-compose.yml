@@ -1,0 +1,15 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ofx_data:/data/ofx
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  ofx_data:

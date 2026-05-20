@@ -1,0 +1,29 @@
+# Environment & secrets
+.env
+*.env
+
+# Claude Code
+CLAUDE.md
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Input PDFs (personal bank statements)
+in/
+
+# Output OFX files (generated, not source)
+ofx/
+out/
+
+# Docker
+*.log
