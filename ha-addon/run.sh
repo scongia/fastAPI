@@ -1,10 +1,9 @@
-#!/usr/bin/with-contenv bashio
+#!/bin/bash
+set -e
 
-bashio::log.info "Starting UAE PDF to OFX API..."
+PORT=${PORT:-8099}
 
-PORT=$(bashio::config 'port')
-bashio::log.info "Listening on port ${PORT}"
-
+echo "Starting FastAPI on port ${PORT}..."
 mkdir -p /data/ofx
 
 exec uvicorn api.main:app \

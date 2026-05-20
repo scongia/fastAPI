@@ -1,8 +1,9 @@
-FROM ghcr.io/home-assistant/base-python:3.12-alpine3.21
+FROM python:3.12-slim
 
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
-    poppler-utils
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 

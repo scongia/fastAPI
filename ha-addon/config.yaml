@@ -17,3 +17,5 @@ options:
   port: 8099
 schema:
   port: int
+environment:
+  PORT: "{{port}}"
