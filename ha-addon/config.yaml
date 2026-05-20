@@ -13,5 +13,21 @@ ports_description:
   8099/tcp: "FastAPI HTTP service"
 map:
   - data
-options: {}
-schema: {}
+options:
+  DEXT_API_KEY: ""
+  ZOHO_CLIENT_ID: ""
+  ZOHO_CLIENT_SECRET: ""
+  ZOHO_REFRESH_TOKEN: ""
+  ZOHO_ORGANIZATION_ID: ""
+  ZOHO_BOOKS_BASE_URL: "<https://www.zohoapis.ae/books/v3>"
+  ANTHROPIC_API_KEY: ""
+  CLAUDE_MODEL: "claude-haiku-4-5-20251001"
+schema:
+  DEXT_API_KEY: str
+  ZOHO_CLIENT_ID: str
+  ZOHO_CLIENT_SECRET: str
+  ZOHO_REFRESH_TOKEN: str
+  ZOHO_ORGANIZATION_ID: str
+  ZOHO_BOOKS_BASE_URL: str
+  ANTHROPIC_API_KEY: str
+  CLAUDE_MODEL: str
