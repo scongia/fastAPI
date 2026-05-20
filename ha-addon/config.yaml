@@ -1,4 +1,4 @@
-name: "UAE PDF to OFX"
+name: "FastAPI"
 version: "1.0.0"
 slug: "uae_pdf_to_ofx"
 description: "Converts UAE bank statement PDFs to OFX format via HTTP API"
