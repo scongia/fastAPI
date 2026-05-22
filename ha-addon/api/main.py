@@ -1,18 +1,22 @@
 """
 FastAPI service wrapping pdf_unlock.py and pdf_to_ofx.py as HTTP endpoints.
 
-POST /unlock  — accepts PDF + password, returns unlocked PDF bytes
-POST /convert — accepts PDF + optional parser key, writes OFX to /data/ofx,
-                returns OFX bytes
-GET  /health  — liveness check
+POST /unlock        — accepts PDF + password, returns unlocked PDF bytes
+POST /convert       — accepts PDF + optional parser key, writes OFX to /data/ofx,
+                      returns OFX bytes
+POST /pdf-to-image  — accepts PDF, returns page 1 as base64-encoded JPEG
+GET  /health        — liveness check
 """
 
+import base64
+import io
 import logging
 import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
+from pdf2image import convert_from_bytes
 
 import sys
 import os
@@ -115,3 +119,19 @@ async def convert_pdf(
             media_type="application/xml",
             headers={"Content-Disposition": f'attachment; filename="{latest.name}"'},
         )
+
+
+@app.post("/pdf-to-image")
+async def pdf_to_image(file: UploadFile = File(...), page: int = 1):
+    """Convert a PDF page to a base64-encoded JPEG for AI vision processing."""
+    pdf_bytes = await file.read()
+    images = convert_from_bytes(pdf_bytes, first_page=page, last_page=page, fmt="jpeg")
+
+    if not images:
+        raise HTTPException(status_code=422, detail="Could not convert PDF to image")
+
+    buffer = io.BytesIO()
+    images[0].save(buffer, format="JPEG")
+    b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+    return {"base64": b64, "media_type": "image/jpeg"}
