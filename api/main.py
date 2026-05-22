@@ -7,15 +7,17 @@ POST /convert — accepts PDF + optional parser key, writes OFX to /data/ofx,
 GET  /health  — liveness check
 """
 
+import base64
+import io
 import logging
+import os
+import sys
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
-
-import sys
-import os
+from pdf2image import convert_from_bytes
 
 # Make root package importable when running from /app inside Docker
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -53,7 +55,8 @@ async def unlock_pdf(
         try:
             unlock(in_path, password, out_path)
         except SystemExit:
-            raise HTTPException(status_code=400, detail="Unlock failed — wrong password or invalid PDF")
+            raise HTTPException(
+                status_code=400, detail="Unlock failed — wrong password or invalid PDF")
         except Exception as exc:
             log.exception("unlock error")
             raise HTTPException(status_code=500, detail=str(exc))
@@ -99,19 +102,41 @@ async def convert_pdf(
         try:
             convert(in_path, parser_key=parser_key, output_dir=ofx_dir)
         except SystemExit:
-            raise HTTPException(status_code=500, detail="Conversion failed — check server logs")
+            raise HTTPException(
+                status_code=500, detail="Conversion failed — check server logs")
         except Exception as exc:
             log.exception("convert error")
             raise HTTPException(status_code=500, detail=str(exc))
 
         # Return the OFX file that was just written
-        ofx_files = sorted(ofx_dir.glob("*.ofx"), key=lambda p: p.stat().st_mtime, reverse=True)
+        ofx_files = sorted(ofx_dir.glob("*.ofx"),
+                           key=lambda p: p.stat().st_mtime, reverse=True)
         if not ofx_files:
-            raise HTTPException(status_code=500, detail="OFX file not found after conversion")
+            raise HTTPException(
+                status_code=500, detail="OFX file not found after conversion")
 
         latest = ofx_files[0]
         return Response(
             content=latest.read_bytes(),
             media_type="application/xml",
-            headers={"Content-Disposition": f'attachment; filename="{latest.name}"'},
+            headers={
+                "Content-Disposition": f'attachment; filename="{latest.name}"'},
         )
+
+
+@app.post("/pdf-to-image")
+async def pdf_to_image(file: UploadFile = File(...), page: int = 1):
+    """Convert a PDF page to a base64-encoded JPEG for AI vision processing."""
+    pdf_bytes = await file.read()
+    images = convert_from_bytes(
+        pdf_bytes, first_page=page, last_page=page, fmt="jpeg")
+
+    if not images:
+        raise HTTPException(
+            status_code=422, detail="Could not convert PDF to image")
+
+    buffer = io.BytesIO()
+    images[0].save(buffer, format="JPEG")
+    b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+    return {"base64": b64, "media_type": "image/jpeg"}
